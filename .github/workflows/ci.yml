@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  lint-pep8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Display Python version
+        run: python -V
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pycodestyle
+      
+      - name: PEP8 style check
+        run: |
+          ROOT_PATH=""
+          if [ -n "$ROOT_PATH" ] && [ ! -d "$ROOT_PATH" ]; then
+              echo "Directory $ROOT_PATH does not exist. Exiting."
+              exit 0
+          fi
+          # 檢查程式碼是否符合 PEP8 規範，忽略 E501 (line too long) 規則
+          echo "== PEP8 style check =="
+          PEP8_ERROR_COUNT_CMD="pycodestyle --ignore=W293,W291,W503,W605,E501  ./$ROOT_PATH"
+          # 取得 PEP8 錯誤數量
+          PEP8_ERROR_COUNT=$($PEP8_ERROR_COUNT_CMD | wc -l)
+          # 根據錯誤數量決定是否通過檢查
+          if [ "$PEP8_ERROR_COUNT" -eq 0 ]; then
+              echo "PEP8 passed, no linting errors found."
+          else
+              $PEP8_ERROR_COUNT_CMD
+              echo "==============================="
+              echo "PEP8 failed with $PEP8_ERROR_COUNT errors."
+          fi
+
+  test-unittest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Display Python version
+        run: python -V
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+      
+      - name: Running unit tests
+        run: |
+          echo "== Running unit tests =="
+          python -m unittest discover -s tests
