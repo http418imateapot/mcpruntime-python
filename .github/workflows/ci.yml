@@ -1,6 +1,18 @@
 name: CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which job to run"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - lint
+          - test
+
   pull_request:
   push:
     branches:
@@ -9,23 +21,28 @@ on:
 
 jobs:
   lint-pep8:
+    if: ${{ github.event.inputs.job == 'all'
+         || github.event.inputs.job == 'lint'
+         || github.event.inputs.job == '' }}
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      
+
       - name: Display Python version
         run: python -V
-      
-      - name: Install dependencies
+
+      - name: Install lint dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install pycodestyle
-      
+
       - name: PEP8 style check
         run: |
           ROOT_PATH=""
@@ -33,39 +50,34 @@ jobs:
               echo "Directory $ROOT_PATH does not exist. Exiting."
               exit 0
           fi
-          # 檢查程式碼是否符合 PEP8 規範，忽略 E501 (line too long) 規則
+
           echo "== PEP8 style check =="
-          PEP8_ERROR_COUNT_CMD="pycodestyle --ignore=W293,W291,W503,W605,E501  ./$ROOT_PATH"
-          # 取得 PEP8 錯誤數量
-          PEP8_ERROR_COUNT=$($PEP8_ERROR_COUNT_CMD | wc -l)
-          # 根據錯誤數量決定是否通過檢查
-          if [ "$PEP8_ERROR_COUNT" -eq 0 ]; then
-              echo "PEP8 passed, no linting errors found."
-          else
-              $PEP8_ERROR_COUNT_CMD
-              echo "==============================="
-              echo "PEP8 failed with $PEP8_ERROR_COUNT errors."
-          fi
+          pycodestyle --ignore=W293,W291,W503,W605,E501 ./$ROOT_PATH
 
   test-unittest:
+    if: ${{ github.event.inputs.job == 'all'
+         || github.event.inputs.job == 'test'
+         || github.event.inputs.job == '' }}
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      
+
       - name: Display Python version
         run: python -V
-      
-      - name: Install dependencies
+
+      - name: Install project dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -e .
-      
-      - name: Running unit tests
+
+      - name: Run unit tests
         run: |
           echo "== Running unit tests =="
           python -m unittest discover -s tests
